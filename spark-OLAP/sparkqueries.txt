@@ -1,0 +1,187 @@
+
+lineitem.filter("l_shipdate <= '1998-12-01'").groupBy('l_returnflag','l_linestatus').agg( F.sum('l_quantity').alias('sum_qty'), F.sum(lineitem.L_EXTENDEDPRICE*(1-lineitem.L_DISCOUNT)).alias('sum_disc_price'), F.sum('l_extendedprice').alias('sum_base_price'), F.sum(lineitem.L_EXTENDEDPRICE*(1-lineitem.L_DISCOUNT)*(1+lineitem.L_TAX)).alias('sum_charge'), F.avg('l_quantity').alias('averageqty'), F.avg('l_extendedprice').alias('averageprice'), F.avg('l_discount').alias('averagdisc')).sort('l_returnflag','l_linestatus').limit(1).show()
+
+
+
+////////////////////////////////////////////////////////////////////////////////////Q1
+    europe = region.filter(region.R_NAME == 'EUROPE').join(nation, region.R_REGIONKEY == nation.N_REGIONKEY).join(supplier, nation.N_NATIONKEY == supplier.S_NATIONKEY).join(partsupp, supplier.S_SUPPKEY == partsupp.PS_SUPPKEY)
+    brass = part.filter((part.P_SIZE == 45) & (part.P_TYPE.like("%BRASS"))).join(europe, europe.PS_PARTKEY == part.P_PARTKEY)
+	minCost = brass.groupBy(brass.PS_PARTKEY).agg(F.min(brass.PS_SUPPLYCOST).alias('min'))
+    result = brass.join(minCost, brass.PS_PARTKEY == minCost.PS_PARTKEY).filter(brass.PS_SUPPLYCOST == minCost.min).select("S_ACCTBAL", "S_NAME", "N_NAME", "P_PARTKEY", "P_MFGR", "S_ADDRESS", "S_PHONE", "S_COMMENT").sort(brass.S_ACCTBAL.desc(), "N_NAME", "S_NAME", brass.P_PARTKEY).limit(100).show()
+  
+///////////////////////////////////////////////////////////////////////////////////Q2
+
+    fcustomer = customer.filter("c_mktsegment == 'MACHINERY' ")
+    forders = orders.filter("o_orderdate < '1995-03-25' ")
+    flineitems = lineitem.filter("l_shipdate > '1995-03-25' ")
+    fjoin=fcustomer.join(forders ,fcustomer.C_CUSTKEY == forders.O_CUSTKEY)
+    fjoin.join(flineitems , fjoin.O_ORDERKEY == flineitems .L_ORDERKEY).groupBy('l_orderkey','o_orderdate','o_shippriority').agg(F.sum(lineitem.L_EXTENDEDPRICE*(1-lineitem.L_DISCOUNT)).alias('revenue')).orderBy(['revenue', 'o_orderdate'], ascending=[0, 1]).limit(10).show()
+///////////////////////////////////////////////////////////////////////////////////Q3
+
+  forders = orders.filter("O_ORDERDATE >= '1993-07-01' ").filter("O_ORDERDATE < '1993-10-01' ")
+  flineitems = lineitem.filter("L_COMMITDATE < L_RECEIPTDATE").select('L_ORDERKEY').distinct()
+  flineitems.join(forders, flineitems.L_ORDERKEY == forders.O_ORDERKEY).groupBy(forders.O_ORDERPRIORITY).agg( F.count(forders.O_ORDERPRIORITY)).sort(forders.O_ORDERPRIORITY).show()
+  
+  
+////////////////////////////////////////////////////////////////////////////////////Q4
+
+     forders = orders.filter("O_ORDERDATE >= '1995-01-01' ").filter("O_ORDERDATE < '1996-01-01' ")
+	 res1 = region.filter("R_NAME == 'AFRICA' ").join(nation, region.R_REGIONKEY == nation.N_NATIONKEY).join(supplier, nation.N_NATIONKEY == supplier.S_NATIONKEY).join(lineitem, supplier.S_SUPPKEY == lineitem.L_SUPPKEY).select('N_NAME', 'L_EXTENDEDPRICE', 'L_DISCOUNT', 'L_ORDERKEY', 'S_NATIONKEY')
+	 res1.join(forders, res1.L_ORDERKEY == forders.O_ORDERKEY).join(customer, (forders.O_CUSTKEY == customer.C_CUSTKEY) & (res1.S_NATIONKEY == customer.C_NATIONKEY)).select('N_NAME', (lineitem.L_EXTENDEDPRICE*(1-lineitem.L_DISCOUNT)).alias('value')).groupBy('N_NAME').agg(F.sum('value').alias('revenue')).sort('revenue').show()
+	 
+///////////////////////////////////////////////////////////////////////////////Q5
+l_wherecluse = lineitem.filter("l_shipdate >= '1995-01-01' ").filter("l_shipdate < '1996-01-01' ").filter('l_discount >= 0.02').filter('l_discount >= 0.04').filter('l_quantity < 24')
+res = l_wherecluse.agg(F.sum(l_wherecluse.L_EXTENDEDPRICE *(l_wherecluse.L_DISCOUNT)).alias("revenue")).show()
+
+
+////////////////////////////////////////////////////////////////////////////////////Q6
+     fnation = nation.filter("n_name = 'ETHIOPIA' or n_name = 'JAPAN'")
+     flineitem = lineitem.filter("l_shipdate >= '1995-01-01' and l_shipdate <= '1996-12-31'")
+
+     suppliernation = fnation.join(supplier, fnation.N_NATIONKEY == supplier.S_NATIONKEY).join(flineitem , supplier.S_SUPPKEY == flineitem .L_SUPPKEY).withColumnRenamed('n_name','supp_nation')
+
+     customerNation=fnation.join(customer, fnation.N_NATIONKEY == customer.C_NATIONKEY).join(orders, customer.C_CUSTKEY == orders.O_CUSTKEY).withColumnRenamed('n_name','cust_nation')
+
+    fjoin=customerNation.join(suppliernation ,customerNation.O_ORDERKEY == suppliernation.L_ORDERKEY)
+    res1=fjoin.filter("supp_nation = 'ETHIOPIA'").filter("cust_nation = 'JAPAN'")
+    res2=fjoin.filter("supp_nation = 'JAPAN'").filter("cust_nation = 'ETHIOPIA'")
+
+    res1.union(res2).groupBy('supp_nation','cust_nation',F.substring(suppliernation.L_SHIPDATE,0,4).alias('l_year')).agg(F.sum(suppliernation.L_EXTENDEDPRICE*(1-suppliernation .L_DISCOUNT)).alias('revenue')).sort('supp_nation','cust_nation','l_year').show()
+
+
+/////////////////////////////////////////////////////////////////////////////////////////Q7
+	 
+     fregion = region.filter("r_name == 'AMERICA'")
+     forder = orders.filter("o_orderdate <= '1996-12-31' ").filter(" o_orderdate >= '1995-01-01' ")
+     fpart = part.filter(part.P_TYPE == 'ECONOMY ANODIZED STEEL')
+	 nat = nation.join(supplier, nation.N_NATIONKEY == supplier.S_NATIONKEY)
+     line = lineitem.select('L_PARTKEY', 'L_SUPPKEY', 'L_ORDERKEY', (lineitem.L_EXTENDEDPRICE *(1-lineitem.L_DISCOUNT)).alias('volume')).join(fpart, lineitem.L_PARTKEY == fpart.P_PARTKEY).join(nat, lineitem.L_SUPPKEY == nat.S_SUPPKEY)
+     result = nation.join(fregion, nat.N_REGIONKEY == fregion.R_REGIONKEY).select('N_NATIONKEY').join(customer, nat.N_NATIONKEY == customer.C_NATIONKEY).select('C_CUSTKEY').join(forder, customer.C_CUSTKEY == forder.O_CUSTKEY).select('O_ORDERKEY', 'O_ORDERDATE').join(line, forder.O_ORDERKEY == line.L_ORDERKEY).select(forder.O_ORDERDATE.substr(0,4).alias('o_year'), 'volume', F.when(nat.N_NAME.like("BRAZIL%"), line.volume).otherwise(0).alias('case_volume')).groupBy('o_year').agg(F.sum('case_volume') / F.sum(line.volume)).sort('o_year').show()
+  
+	 
+///////////////////////////////////////////////////////////////////////////////////////Q8
+	 linePart = part.filter(part.P_NAME.like('%orange%')).join(lineitem, part.P_PARTKEY == lineitem.L_PARTKEY)
+
+     natSup = nation.join(supplier,nation.N_NATIONKEY== supplier.S_NATIONKEY)
+
+     res1=linePart.join(natSup ,linePart.L_SUPPKEY == natSup.S_SUPPKEY).join(partsupp, (linePart.L_SUPPKEY == partsupp.PS_SUPPKEY) & (linePart.L_PARTKEY == partsupp.PS_PARTKEY))
+     res2=res1.join(orders, res1.L_ORDERKEY == orders.O_ORDERKEY).groupBy(res1.N_NAME,F.substring(orders.O_ORDERDATE,0,4).alias('o_year'))
+     result=res2.agg(F.sum(linePart.L_EXTENDEDPRICE * (1 - linePart.L_DISCOUNT) - (partsupp.PS_SUPPLYCOST * linePart.L_QUANTITY) ).alias('sum_profit'))
+     result.sort(['n_name', 'o_year'],ascending=[1,0]).show()
+
+///////////////////////////////////////////////////////////////////////////////////////////Q9
+	 flineitem = lineitem.filter("L_RETURNFLAG =='R' ")
+	 orders.filter("O_ORDERDATE < '1994-01-01' ").filter("O_ORDERDATE >= '1993-10-01' ").join(customer, orders.O_CUSTKEY == customer.C_CUSTKEY).join(nation, customer.C_NATIONKEY == nation.N_NATIONKEY).join(flineitem, orders.O_ORDERKEY == flineitem.L_ORDERKEY).select('C_CUSTKEY', 'C_NAME',(lineitem.L_EXTENDEDPRICE*(1-lineitem.L_DISCOUNT)).alias('volume'),'C_ACCTBAL', 'N_NAME', 'C_ADDRESS', 'C_PHONE', 'C_COMMENT').groupBy('C_CUSTKEY', 'C_NAME', 'C_ACCTBAL', 'N_NAME', 'C_ADDRESS', 'C_PHONE', 'C_COMMENT').agg(F.sum('volume').alias('revenue')).sort('revenue', ascending=[0, 1]).show()
+	 
+	
+	 
+////////////////////////////////////////////////////////////////////////////Q10	 
+	
+	 fjoin = nation.filter("n_name = 'ALGERIA'").join(supplier, nation.N_NATIONKEY == supplier.S_NATIONKEY).join(partsupp, supplier.S_SUPPKEY == partsupp.PS_SUPPKEY).select(partsupp.PS_PARTKEY,(partsupp.PS_SUPPLYCOST * partsupp.PS_AVAILQTY).alias('value'))
+
+    sumres=fjoin.agg(F.sum('value').alias('total_value'))
+    tmp=fjoin.groupBy(fjoin.PS_PARTKEY).agg(F.sum('value').alias('partVal'))
+    tmp.join(sumres,tmp.partVal > (sumres.total_value * 0.0001000000)).sort(['partVal'],ascending=[0]).show()
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////Q11
+     lineitem.groupBy('L_ORDERKEY').agg(F.sum('L_QUANTITY').alias('sum_quantity')).filter("sum_quantity > 314 ").select(lineitem.L_ORDERKEY, 'sum_quantity').join(orders, lineitem.L_ORDERKEY == orders.O_ORDERKEY).join(customer, customer.C_CUSTKEY == orders.O_CUSTKEY).select('sum_quantity','C_NAME', 'C_CUSTKEY', 'C_CUSTKEY', 'O_ORDERKEY', 'O_ORDERDATE', 'O_TOTALPRICE').groupBy('C_NAME', 'C_CUSTKEY', 'O_ORDERKEY', 'O_ORDERDATE', 'O_TOTALPRICE').agg(F.sum('sum_quantity')).sort(orders.O_TOTALPRICE.desc(), orders.O_ORDERDATE).show()
+	 
+	
+////////////////////////////////////////////////////////////////////////////Q18
+ lineitem.filter("l_shipmode == 'MAIL' or l_shipmode == 'SHIP'").filter("l_commitdate < l_receiptdate").filter("l_shipdate < l_commitdate").filter("l_receiptdate >= '1994-01-01'").filter("l_receiptdate < '1995-01-01'").join(orders, lineitem.L_ORDERKEY == orders.O_ORDERKEY).select('l_shipmode', 'o_orderpriority').groupBy('l_shipmode').agg(F.sum(F.when((orders.O_ORDERPRIORITY == '1-URGENT') | (orders.O_ORDERPRIORITY == '2-HIGH'), 1).otherwise(0).alias('sum_highorderpriority')),F.sum(F.when((orders.O_ORDERPRIORITY != '1-URGENT') | (orders.O_ORDERPRIORITY!= '2-HIGH'), 1).otherwise(0)).alias('sum_loworderpriority')).sort('l_shipmode').show()
+   
+/////////////////////////////////////////////////////////////////////////////////Q12
+
+forder=orders.filter(~ orders.O_COMMENT.like('%special%packages%'))
+customer.join(forder, customer.C_CUSTKEY == forder.O_CUSTKEY , "left_outer").groupBy('o_custkey').agg(F.count('o_orderkey').alias('c_count')).groupBy('c_count').agg(F.count('o_custkey').alias('custdist')).sort(['custdist','c_count'],ascending=[0,0]).show()
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////Q13
+
+    fpart = part.join(lineitem, part.P_PARTKEY == lineitem.L_PARTKEY ).filter("l_shipdate > '1996-03-01'").filter("l_shipdate <= '1996-04-01'").select('P_TYPE', (lineitem.L_EXTENDEDPRICE *(1-lineitem.L_DISCOUNT)).alias('value'))
+	query = fpart.agg(F.sum(F.when(fpart.P_TYPE.like("PROMO%"), fpart.value).otherwise(0)) * 100.00/ F.sum(fpart.value)).show()
+	
+
+
+//////////////////////////////////////////////////////////////////////////////Q14
+     revenue = lineitem.filter("l_shipdate >= '1994-05-01'" ).filter("l_shipdate < '1995-08-01'").groupBy('l_suppkey').agg(F.sum(lineitem.L_EXTENDEDPRICE*(1-lineitem.L_DISCOUNT)).alias('total'))
+     value=revenue.agg(F.value('total').alias('max_total'))
+     res=value.join(revenue,value.max_total == revenue.total)
+     res.join(supplier, res.l_suppkey  == supplier.S_SUPPKEY).sort('s_suppkey').show() 
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////Q15
+fparts = part.filter(part.P_BRAND != 'Brand#21').filter(~ part.P_TYPE.like("LARGE PLATED%")).filter(part.P_SIZE.isin([47, 30, 18, 20, 48, 10, 39, 20])).select('P_PARTKEY', 'P_BRAND', 'P_TYPE', 'P_SIZE')
+  
+   res1 = supplier.filter(supplier.S_COMMENT.like("%Customer%Complaints%")).join(partsupp, supplier.S_SUPPKEY == partsupp.PS_SUPPKEY).select('PS_PARTKEY', 'PS_SUPPKEY')
+   
+   res1.join(fparts, res1.PS_PARTKEY == fparts.P_PARTKEY).groupBy('P_BRAND', 'P_TYPE', 'P_SIZE').agg(F.countDistinct('ps_suppkey').alias('supplier_count')).sort(F.desc('supplier_count'), 'P_BRAND', 'P_TYPE', 'P_SIZE').show()
+   
+/////////////////////////////////////////////////////////////////////////////////////Q16
+
+   flineitem = lineitem.filter("L_SHIPDATE >= '1994-01-01'").filter("L_SHIPDATE < '1995-01-01'").groupBy('L_PARTKEY', 'L_SUPPKEY').agg((F.sum('L_QUANTITY') * 0.5).alias('sum_quantity'))
+   fnation = nation.filter("N_NAME == 'INDIA'")
+   nat_supp = supplier.select('S_SUPPKEY', 'S_NAME', 'S_NATIONKEY', 'S_ADDRESS').join(fnation, supplier.S_NATIONKEY == fnation.N_NATIONKEY)
+   res1 = part.filter(part.P_NAME.like("%forest")).select('P_PARTKEY').distinct().join(partsupp, part.P_PARTKEY == partsupp.PS_PARTKEY).join(flineitem, (partsupp.PS_PARTKEY == flineitem.L_PARTKEY) & (partsupp.PS_SUPPKEY == flineitem.L_SUPPKEY))
+   res2 = res1.filter(res1.PS_AVAILQTY > 'sum_quantity').select(res1.PS_SUPPKEY).distinct()
+   query = res1.join(nat_supp, res2.PS_SUPPKEY == nat_supp.S_SUPPKEY).select(nat_supp.S_NAME, nat_supp.S_ADDRESS).sort(nat_supp.S_NAME).show() 
+   
+   
+   
+////////////////////////////////////////////////////////////////////////////////Q20
+  
+  
+fpart = part.filter(part.P_BRAND== 'Brand#13').filter(part.P_CONTAINER == 'WRAP PKG').select('p_partkey').join(lineitem, part.P_PARTKEY == lineitem.L_PARTKEY, 'left_outer')
+
+fpartres=fpart.groupBy('p_partkey').agg((F.avg('l_quantity')*0.2).alias('avg_quantity')).select(fpart.p_partkey.alias('key'),'avg_quantity')
+
+fpartres.join(fpart, fpartres.key == fpart.p_partkey).filter(fpart.L_QUANTITY < fpartres.avg_quantity).agg(F.sum(fpart.L_EXTENDEDPRICE) / 7.0).show()
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////Q17
+
+
+sm = ["SM CASE","SM BOX","SM PACK","SM PKG"]
+md = ["MED BAG","MED BOX","MED PKG","MED PACK"]
+lg = ["LG CASE","LG BOX","LG PACK","LG PKG"]
+
+partjoin= part.join(lineitem, part.P_PARTKEY == lineitem.L_PARTKEY).filter("l_shipmode = 'AIR' or l_shipmode = 'AIR REG'").filter("l_shipinstruct = 'DELIVER IN PERSON'")
+
+fpart1=partjoin.filter("p_brand = 'Brand#54'").filter(part.P_CONTAINER.isin(sm)).filter("l_quantity >= 7").filter("l_quantity <= 17").filter("p_size >= 1").filter("p_size <= 5")
+
+fpart2= partjoin.filter("p_brand = 'Brand#22'").filter(part.P_CONTAINER.isin(md)).filter("l_quantity >= 12").filter("l_quantity <= 22").filter("p_size >= 1").filter("p_size <= 10") 
+
+fpartres= partjoin.filter("p_brand = 'Brand#51'").filter(part.P_CONTAINER.isin(lg)).filter("l_quantity >= 25").filter("l_quantity <= 35").filter("p_size >= 1").filter("p_size <= 15") 
+
+res=fpart1.union(fpart2).union(fpartres)
+res.agg(F.sum(res.L_EXTENDEDPRICE*(1-res.L_DISCOUNT))).alias('revenue').show()
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////Q19
+
+fsupplier = supplier.select('s_suppkey', 's_nationkey', 's_name')
+
+plineitem = lineitem.select('l_suppkey', 'l_orderkey','l_receiptdate', 'l_commitdate')
+   
+flineitem = plineitem.filter("l_receiptdate > l_commitdate")
+   
+line1 = plineitem.groupBy('l_orderkey').agg(F.countDistinct('l_suppkey').alias('suppkey_count'), F.max('l_suppkey').alias('suppkey_max')).select(plineitem.l_orderkey.alias('key'),'suppkey_count', 'suppkey_max')
+
+line2 = flineitem.groupBy('l_orderkey').agg(F.countDistinct('l_suppkey').alias('suppkey_count'), F.max('l_suppkey').alias('suppkey_max')).select(flineitem.l_orderkey.alias('key'), 'suppkey_count', 'suppkey_max')
+
+forder = orders.select('o_orderkey', 'o_orderstatus').filter("o_orderstatus = 'F'")
+
+fnation=nation.filter("n_name = 'INDONESIA'").join(fsupplier, nation.N_NATIONKEY == fsupplier.s_nationkey).join(flineitem, fsupplier.s_suppkey == flineitem.l_suppkey).join(forder, flineitem.l_orderkey == forder.o_orderkey).join(line1, flineitem.l_orderkey == line1.key).filter("suppkey_count > 1 or (suppkey_count = 1 and l_suppkey = suppkey_max)").select('s_name', 'l_orderkey', 'l_suppkey')
+res=fnation.join(line2, fnation.l_orderkey == line2.key, 'left_outer').select('s_name', 'l_orderkey', 'l_suppkey', 'suppkey_count','suppkey_max').filter("suppkey_count = 1 and l_suppkey = suppkey_max").groupBy('s_name').agg(F.count('l_suppkey').alias('numwait')).sort(['numwait','s_name'],ascending=[0,1]).limit(100)
+res.show()
+
+//////////////////////////////////////////////////////////////////////////////////////////////////Q21
+
+
+   fcustomer = customer.select('C_ACCTBAL', 'C_CUSTKEY', customer.C_PHONE.substr(0, 2).alias('cntrycode')).filter(F.col('cntrycode').isin(['28', '43', '22', '39', '31', '30', '41']))
+   avg_customer = fcustomer.filter(customer.C_ACCTBAL > 0.00).agg(F.avg(customer.C_ACCTBAL).alias('avg_acctbal'))
+   res1 = orders.groupBy(orders.O_CUSTKEY).agg(orders.O_CUSTKEY).select(orders.O_CUSTKEY).join(fcustomer, orders.O_CUSTKEY == fcustomer.C_CUSTKEY, 'right_outer').filter(orders.O_CUSTKEY.isNull()).join(avg_customer).filter(fcustomer.C_ACCTBAL > 'avg_acctbal')
+   query = fcustomer.groupBy('cntrycode').agg(F.count(fcustomer.C_ACCTBAL), F.sum(fcustomer.C_ACCTBAL)).sort('cntrycode').limit(1).show() 
+/////////////////////////////////////////////////////////////////////////////////////////Q22

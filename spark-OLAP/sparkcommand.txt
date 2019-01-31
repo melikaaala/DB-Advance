@@ -1,0 +1,298 @@
+data = sc.textFile("/data/OLAP_Benchmark_data/nation.tbl")
+
+fields=[StructField("N_NATIONKEY", IntegerType(), True), StructField("N_NAME", StringType(), True), StructField("N_REGIONKEY", IntegerType(), True), StructField("N_COMMENT", StringType(), True)]
+
+schema=StructType(fields)
+
+df = data.\
+    map(lambda x: x.split("|")).\
+    map(lambda x: {
+        'N_NATIONKEY':int(x[0]),
+        'N_NAME':x[1],
+        'N_REGIONKEY':int(x[2]),
+        'N_COMMENT':x[3]})\
+    .toDF(schema)
+
+df.write.parquet("hdfs://namenode:8020/nation.parquet")
+from pyspark.sql.types import *
+from pyspark.sql import *
+from pyspark.sql import functions
+from pyspark.sql import functions as F
+nation = sqlContext.read.parquet("hdfs://namenode:8020/nation.parquet")
+
+///////////////////////////////////////////////////////////////////////
+region = sc.textFile("/data/OLAP_Benchmark_data/region.tbl")
+
+fields=[StructField("R_REGIONKEY", IntegerType(), True), StructField("R_NAME", StringType(), True),  StructField("R_COMMENT", StringType(), True)]
+schema=StructType(fields)
+df = region.\
+    map(lambda x: x.split("|")).\
+    map(lambda x: {
+        'R_REGIONKEY':int(x[0]),
+        'R_NAME':x[1],
+        'R_COMMENT':x[2]})\
+    .toDF(schema)
+df.write.mode("overwrite").parquet("hdfs://namenode:8020/region.parquet")
+
+region = sqlContext.read.parquet("hdfs://namenode:8020/region.parquet")
+
+
+/////////////////////////////////////////////////////////////////////////////////////  
+
+supplier = sqlContext.read.parquet("hdfs://namenode:8020/supplier.parquet")
+
+
+////////////////////////////////////////////////////////////////////////////
+customer = sqlContext.read.parquet("hdfs://namenode:8020/customer.parquet")
+
+/////////////////////////////////////////////////////////////////////////
+
+part = sc.textFile("/data/OLAP_Benchmark_data/part.tbl")
+from pyspark.sql.types import *
+from decimal import *
+from pyspark.sql import *
+from pyspark.sql import *
+
+fields=[StructField("P_PARTKEY", IntegerType(), True), StructField("P_NAME", StringType(), True), StructField("P_MFGR", StringType(), True), StructField("P_BRAND", StringType(), True), StructField("P_TYPE", StringType(), True), StructField("P_SIZE", IntegerType(), True), StructField("P_CONTAINER", StringType(), True), StructField("P_RETAILPRICE", FloatType(), True), StructField("P_COMMENT", StringType(), True)]
+
+schema=StructType(fields)
+
+df = part.\
+    map(lambda x: x.split("|")).\
+    map(lambda x: {
+        'P_PARTKEY':int(x[0]),
+        'P_NAME':x[1],
+        'P_MFGR':x[2],
+        'P_BRAND':x[3],
+        'P_TYPE':x[4],  
+        'P_SIZE':int(x[5]),
+        'P_CONTAINER':x[6],
+        'P_RETAILPRICE':float(x[7]),
+        'P_COMMENT':x[8] })\
+    .toDF(schema)
+
+df.write.mode("overwrite").parquet("hdfs://namenode:8020/part.parquet")
+part = sqlContext.read.parquet("hdfs://namenode:8020/part.parquet")
+
+
+
+///////////////////////////////////////////////////////////////////////////
+
+partsupp= sc.textFile("/data/OLAP_Benchmark_data/partsupp.tbl")
+
+from pyspark.sql.types import *
+from decimal import *
+from pyspark.sql import *
+from pyspark.sql import *
+
+
+fields=[StructField("PS_PARTKEY", IntegerType(), True), StructField("PS_SUPPKEY", IntegerType(), True), StructField("PS_AVAILQTY", IntegerType(), True), StructField("PS_SUPPLYCOST", FloatType(), True), StructField("PS_COMMENT", StringType(), True)]
+
+schema=StructType(fields)
+
+df = partsupp.\
+    map(lambda x: x.split("|")).\
+    map(lambda x: {
+        'PS_PARTKEY':int(x[0]),
+        'PS_SUPPKEY':int(x[1]),
+        'PS_AVAILQTY':int(x[2]),
+        'PS_SUPPLYCOST':float(x[3]),
+        'PS_COMMENT':x[4]})\
+    .toDF(schema)
+
+df.write.parquet("hdfs://namenode:8020/partsupp.parquet")
+df.write.mode("overwrite").parquet("hdfs://namenode:8020/partsupp.parquet")
+
+partsupp = sqlContext.read.parquet("hdfs://namenode:8020/partsupp.parquet")
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+orders = sc.textFile("/data/OLAP_Benchmark_data/orders.tbl")
+
+from pyspark.sql.types import *
+from decimal import *
+from pyspark.sql import *
+from pyspark.sql import *
+
+fields=[StructField("O_ORDERKEY", IntegerType(), True), StructField("O_CUSTKEY", IntegerType(), True), StructField("O_ORDERSTATUS", StringType(), True), StructField("O_TOTALPRICE", FloatType(), True), StructField("O_ORDERDATE", StringType(), True), StructField("O_ORDERPRIORITY", StringType(), True), StructField("O_CLERK", StringType(), True),StructField("O_SHIPPRIORITY", IntegerType(), True), StructField("O_COMMENT", StringType(), True)]
+
+schema=StructType(fields)
+
+df = orders.\
+    map(lambda x: x.split("|")).\
+    map(lambda x: {
+        'O_ORDERKEY':int(x[0]),
+        'O_CUSTKEY':int(x[1]),
+        'O_ORDERSTATUS':x[2],
+        'O_TOTALPRICE':float(x[3]),
+        'O_ORDERDATE' :x[4],
+        'O_ORDERPRIORITY':x[5],
+        'O_CLERK':x[6],
+        'O_SHIPPRIORITY':int(x[7]),
+        'O_COMMENT':x[8]})\
+    .toDF(schema)
+
+df.write.parquet("hdfs://namenode:8020/orders.parquet")
+df.write.mode("overwrite").parquet("hdfs://namenode:8020/orders.parquet")
+orders = sqlContext.read.parquet("hdfs://namenode:8020/orders.parquet")
+
+
+////////////////////////////////////////////////////////////////////////////////////////// 
+
+
+lineitem = sc.textFile("/data/OLAP_Benchmark_data/lineitem.tbl")
+
+from pyspark.sql.types import *
+from decimal import *
+from pyspark.sql import *
+from pyspark.sql import *
+
+fields=[StructField("L_ORDERKEY", IntegerType(), True), StructField("L_PARTKEY", IntegerType(), True), StructField("L_SUPPKEY", IntegerType(), True), StructField("L_LINENUMBER", IntegerType(), True), StructField("L_QUANTITY", FloatType(), True), StructField("L_EXTENDEDPRICE", FloatType(), True), StructField("L_DISCOUNT", FloatType(), True), StructField("L_TAX", FloatType(), True), StructField("L_RETURNFLAG", StringType(), True), StructField("L_LINESTATUS", StringType(), True), StructField("L_SHIPDATE", StringType(), True), StructField("L_COMMITDATE", StringType(), True), StructField("L_RECEIPTDATE", StringType(), True), StructField("L_SHIPINSTRUCT", StringType(), True), StructField("L_SHIPMODE", StringType(), True), StructField("L_COMMENT", StringType(), True)]
+
+
+schema=StructType(fields)
+
+df = lineitem.\
+    map(lambda x: x.split("|")).\
+    map(lambda x: {
+        'L_ORDERKEY':int(x[0]),
+        'L_PARTKEY':int(x[1]),
+        'L_SUPPKEY':int(x[2]),
+        'L_LINENUMBER':int(x[3]),
+        'L_QUANTITY':float(x[4]),
+        'L_EXTENDEDPRICE':float(x[5]),
+        'L_DISCOUNT':float(x[6]),
+        'L_TAX':float(x[7]),
+        'L_RETURNFLAG':x[8],
+        'L_LINESTATUS':x[9],
+        'L_SHIPDATE':x[10],
+        'L_COMMITDATE':x[11],
+        'L_RECEIPTDATE':x[12],
+        'L_SHIPINSTRUCT':x[13],
+        'L_SHIPMODE':x[14],
+        'L_COMMENT':x[15]})\
+    .toDF(schema)
+
+df.write.parquet("hdfs://namenode:8020/lineitem.parquet")
+lineitem = sqlContext.read.parquet("hdfs://namenode:8020/lineitem.parquet")
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+from pyspark.sql import HiveContext
+ORC:
+
+sqlContext.setConf('spark.sql.orc.impl', 'native')
+region = sqlContext.read.parquet("hdfs://namenode:8020/region.parquet")
+region.write.save("hdfs://namenode:8020/region.orc", mode='overwrite', format='orc')
+region = sqlContext.read.format('orc').load("hdfs://namenode:8020/region.orc")
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////
+
+
+nation = sqlContext.read.parquet("hdfs://namenode:8020/nation.parquet")
+nation.write.save("hdfs://namenode:8020/nation.orc", mode='overwrite', format='orc')
+nation = sqlContext.read.format('orc').load("hdfs://namenode:8020/nation.orc")
+
+//////////////////////////////////////////////////////////////////////////////////
+
+
+supplier = sqlContext.read.parquet("hdfs://namenode:8020/supplier.parquet")
+supplier.write.save("hdfs://namenode:8020/supplier.orc", mode='overwrite', format='orc')
+supplier = sqlContext.read.format('orc').load("hdfs://namenode:8020/supplier.orc")
+
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+customer = sqlContext.read.parquet("hdfs://namenode:8020/customer.parquet")
+customer.write.save("hdfs://namenode:8020/customer.orc", mode='overwrite', format='orc')
+customer = sqlContext.read.format('orc').load("hdfs://namenode:8020/customer.orc")
+
+
+///////////////////////////////////////////////////////////////////////////////////
+
+
+part = sqlContext.read.parquet("hdfs://namenode:8020/part.parquet")
+part.write.save("hdfs://namenode:8020/part.orc", mode='overwrite', format='orc')
+part = sqlContext.read.format('orc').load("hdfs://namenode:8020/part.orc")
+
+////////////////////////////////////////////////////////////////////////////////////
+
+
+partsupp = sqlContext.read.parquet("hdfs://namenode:8020/partsupp.parquet")
+partsupp.write.save("hdfs://namenode:8020/partsupp.orc", mode='overwrite', format='orc')
+partsupp = sqlContext.read.format('orc').load("hdfs://namenode:8020/partsupp.orc")
+
+
+///////////////////////////////////////////////////////////////////////////////////
+
+orders = sqlContext.read.parquet("hdfs://namenode:8020/orders.parquet")
+orders.write.save("hdfs://namenode:8020/orders.orc", mode='overwrite', format='orc')
+orders = sqlContext.read.format('orc').load("hdfs://namenode:8020/orders.orc")
+
+
+///////////////////////////////////////////////////////////////////////////////////
+
+lineitem = sqlContext.read.parquet("hdfs://namenode:8020/lineitem.parquet")
+lineitem.write.save("hdfs://namenode:8020/lineitem.orc", mode='overwrite', format='orc')
+lineitem = sqlContext.read.format('orc').load("hdfs://namenode:8020/lineitem.orc")
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////AVRO:
+
+
+
+nation = sqlContext.read.parquet("hdfs://namenode:8020/nation.parquet")
+nation.write.mode('overwrite').format("com.databricks.spark.avro").save("hdfs://namenode:8020/nation.avro")
+nation = spark.read.format("com.databricks.spark.avro").load("hdfs://namenode:8020/nation.avro")
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+region= sqlContext.read.parquet("hdfs://namenode:8020/region.parquet")
+region.write.mode('overwrite').format("com.databricks.spark.avro").save("hdfs://namenode:8020/region.avro")
+region = spark.read.format("com.databricks.spark.avro").load("hdfs://namenode:8020/region.avro")
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+supplier = sqlContext.read.parquet("hdfs://namenode:8020/supplier.parquet")
+supplier.write.mode('overwrite').format("com.databricks.spark.avro").save("hdfs://namenode:8020/supplier.avro")
+supplier = spark.read.format("com.databricks.spark.avro").load("hdfs://namenode:8020/supplier.avro")
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+customer = sqlContext.read.parquet("hdfs://namenode:8020/customer.parquet")
+customer.write.mode('overwrite').format("com.databricks.spark.avro").save("hdfs://namenode:8020/customer.avro")
+customer = spark.read.format("com.databricks.spark.avro").load("hdfs://namenode:8020/customer.avro")
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+part = sqlContext.read.parquet("hdfs://namenode:8020/part.parquet")
+part.write.mode('overwrite').format("com.databricks.spark.avro").save("hdfs://namenode:8020/part.avro")
+part = spark.read.format("com.databricks.spark.avro").load("hdfs://namenode:8020/part.avro")
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+
+partsupp = sqlContext.read.parquet("hdfs://namenode:8020/partsupp.parquet")
+partsupp.write.mode('overwrite').format("com.databricks.spark.avro").save("hdfs://namenode:8020/partsupp.avro")
+partsupp = spark.read.format("com.databricks.spark.avro").load("hdfs://namenode:8020/partsupp.avro")
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+orders = sqlContext.read.parquet("hdfs://namenode:8020/orders.parquet")
+orders.write.mode('overwrite').format("com.databricks.spark.avro").save("hdfs://namenode:8020/orders.avro")
+orders = spark.read.format("com.databricks.spark.avro").load("hdfs://namenode:8020/orders.avro")
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+lineitem = sqlContext.read.parquet("hdfs://namenode:8020/lineitem.parquet")
+lineitem.write.mode('overwrite').format("com.databricks.spark.avro").save("hdfs://namenode:8020/lineitem.avro")
+lineitem = spark.read.format("com.databricks.spark.avro").load("hdfs://namenode:8020/lineitem.avro")
+
+
+
+
+ ./cockroach sql --insecure
+
